@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="ms" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem E-Aduan // Terminal Versi 2.4</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Share Tech Mono & VT323 -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Custom Retro Terminal Styling */
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #050505;
+            color: #00ff66;
+            overflow-x: hidden;
+        }
+
+        .terminal-font {
+            font-family: 'VT323', monospace;
+        }
+
+        /* CRT Scanline & Glow Effects */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 99999;
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .crt-glow {
+            text-shadow: 0 0 8px rgba(0, 255, 102, 0.6);
+        }
+
+        .box-glow {
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.2), inset 0 0 15px rgba(0, 255, 102, 0.1);
+            border: 1px solid #00ff66;
+        }
+
+        /* Custom scrollbar for terminal feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00ff66;
+            border-radius: 2px;
+        }
+
+        .blink {
+            animation: blink-anim 1s steps(2, start) infinite;
+        }
+        @keyframes blink-anim {
+            to { visibility: hidden; }
+        }
+
+        /* Retro inputs */
+        input, select, textarea {
+            background-color: #000000 !important;
+            color: #00ff66 !important;
+            border: 1px solid #00ff66 !important;
+            outline: none !important;
+        }
+        input:focus, select:focus, textarea:focus {
+            box-shadow: 0 0 10px #00ff66;
+        }
+        select option {
+            background-color: #000000;
+            color: #00ff66;
+        }
+    </style>
+</head>
+<body class="crt h-full flex flex-col justify-between p-3 md:p-6 select-none">
+
+    <!-- HEADER / BANNER -->
+    <header class="w-full max-w-4xl mx-auto border border-[#00ff66] p-4 box-glow bg-black/80 rounded mb-4">
+        <div class="flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-terminal text-2xl crt-glow"></i>
+                <div>
+                    <h1 class="terminal-font text-3xl tracking-widest crt-glow m-0">SISTEM E-ADUAN KERAJAAN v2.4</h1>
+                    <p class="text-xs text-[#00ff66]/70 m-0">[SECURE_TERMINAL_CONNECTED // PROTOCOL_HTTPS]</p>
+                </div>
+            </div>
+            <div class="mt-2 md:mt-0 text-right text-xs">
+                <div id="live-clock" class="crt-glow font-bold">2026-10-24 11:51:00</div>
+                <div class="flex items-center justify-end space-x-2 mt-1">
+                    <span class="text-[#00ff66]/60">STATUS: AKTIF / SECURE</span>
+                    <button type="button" onclick="openAdminAuthModal()" class="bg-yellow-500 text-black px-2 py-0.5 rounded font-bold hover:bg-yellow-400 text-[10px] transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>ADMIN</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN TERMINAL BODY -->
+    <main class="w-full max-w-4xl mx-auto flex-1 flex flex-col box-glow bg-black/90 rounded p-4 md:p-6 mb-4 overflow-y-auto relative">
+
+        <!-- STEP 1: FORM INPUT -->
+        <section id="section-form" class="space-y-4">
+            <!-- AppScript URL Config Box -->
+            <div class="border border-yellow-500/50 bg-yellow-950/20 p-3 rounded text-xs space-y-2">
+                <div class="flex items-center justify-between font-bold text-yellow-400">
+                    <span><i class="fa-solid fa-link mr-1"></i> TETAPAN GOOGLE APPS SCRIPT WEB APP URL</span>
+                    <span id="script-status" class="text-xs text-[#00ff66]">[ TERHUBUNG ]</span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="url" id="appscript-url" value="https://script.google.com/macros/s/AKfycbwnuKoYThqLjXDDR-e6FC5eJkzZRa9qEnZG0TAntfOKCskUan5YT7g8JP5cLwImOK8/exec" placeholder="Sila tampal Web App URL Apps Script anda di sini..." 
+                           class="w-full p-2 text-xs rounded font-mono border-yellow-500/50">
+                    <button type="button" onclick="saveScriptUrl()" class="bg-yellow-500 text-black font-bold px-3 py-1 rounded hover:bg-yellow-400 whitespace-nowrap text-xs">
+                        SIMPAN
+                    </button>
+                </div>
+                <p class="text-[10px] text-yellow-400/80 m-0">* Simpan URL Web App anda di sini supaya data dihantar ke Google Sheets & E-mel PDF dapat digenerate.</p>
+            </div>
+
+            <div class="border-b border-[#00ff66]/40 pb-2 mb-4">
+                <span class="bg-[#00ff66] text-black font-bold px-2 py-0.5 text-xs rounded-none">BORANG A</span>
+                <span class="text-sm ml-2 crt-glow">> SILA MASUKKAN BUTIRAN ADUAN ANDA DI BAWAH:</span>
+            </div>
+
+            <form id="aduan-form" onsubmit="handlePreview(event)" class="space-y-4">
+                <!-- Nama -->
+                <div>
+                    <label class="block text-xs md:text-sm uppercase mb-1 font-bold">
+                        <i class="fa-solid fa-user mr-1"></i> 01. Nama Penuh (Seperti Dalam MyKad):
+                    </label>
+                    <input type="text" id="nama" required placeholder="Cth: AHMAD BIN ALI" 
+                           class="w-full p-2.5 text-sm rounded font-mono">
+                </div>
+
+                <!-- No Telefon & Email (Grid) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs md:text-sm uppercase mb-1 font-bold">
+                            <i class="fa-solid fa-phone mr-1"></i> 02. No. Telefon Bimbit:
+                        </label>
+                        <input type="tel" id="telefon" required placeholder="Cth: 0123456789" 
+                               class="w-full p-2.5 text-sm rounded font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs md:text-sm uppercase mb-1 font-bold">
+                            <i class="fa-solid fa-envelope mr-1"></i> 03. Alamat E-Mel (Untuk Terima PDF Aduan):
+                        </label>
+                        <input type="email" id="email" required placeholder="Cth: ahmad@domain.com" 
+                               class="w-full p-2.5 text-sm rounded font-mono">
+                    </div>
+                </div>
+
+                <!-- Jenis Aduan (Dropdown) -->
+                <div>
+                    <label class="block text-xs md:text-sm uppercase mb-1 font-bold">
+                        <i class="fa-solid fa-list mr-1"></i> 04. Jenis Aduan:
+                    </label>
+                    <select id="jenis_aduan" required class="w-full p-2.5 text-sm rounded font-mono cursor-pointer">
+                        <option value="" disabled selected>-- SILA PILIH KATEGORI ADUAN --</option>
+                        <option value="Infrastruktur & Jalan Raya">INFRASTRUKTUR & JALAN RAYA (Jalan Rosak, Lampu Isyarat)</option>
+                        <option value="Kebersihan & Sisa Pepejal">KEBERSIHAN & SISA PEPEJAL (Sampah Tidak Kutip, Longkang Tersumbat)</option>
+                        <option value="Perkhidmatan Awam & Kaunter">PERKHIDMATAN AWAM & KAUNTER (Isu Perkhidmatan Kaunter)</option>
+                        <option value="Gangguan Utiliti (Air/Elektrik)">GANGGUAN UTILITI (Bekalan Air / Elektrik / Telekomunikasi)</option>
+                        <option value="Lain-Lain Aduan Am">LAIN-LAIN ADUAN AM</option>
+                    </select>
+                </div>
+
+                <!-- Deskripsi Aduan -->
+                <div>
+                    <label class="block text-xs md:text-sm uppercase mb-1 font-bold">
+                        <i class="fa-solid fa-comment-medical mr-1"></i> 05. Deskripsi Terperinci Aduan:
+                    </label>
+                    <textarea id="deskripsi" rows="4" required placeholder="Nyatakan lokasi penuh, tarikh kejadian, dan butiran lanjut aduan anda di sini..." 
+                              class="w-full p-2.5 text-sm rounded font-mono resize-none"></textarea>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end pt-2">
+                    <button type="submit" class="bg-[#00ff66] text-black font-bold px-6 py-2.5 rounded hover:bg-black hover:text-[#00ff66] border border-[#00ff66] transition-all flex items-center space-x-2 cursor-pointer shadow-lg">
+                        <span>SEMAK PREVIEW ADUAN</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- STEP 2: PREVIEW MODAL / SCREEN -->
+        <section id="section-preview" class="hidden space-y-4">
+            <div class="border-b border-[#00ff66]/40 pb-2 mb-4 flex justify-between items-center">
+                <div>
+                    <span class="bg-yellow-400 text-black font-bold px-2 py-0.5 text-xs rounded-none">PREVIEW DATA</span>
+                    <span class="text-sm ml-2 crt-glow">> SEMAK MAKLUMAT DI BAWAH SEBELUM PENGHANTARAN RASMI</span>
+                </div>
+                <span class="text-xs text-yellow-400 animate-pulse">[MOD: PRATINJAU]</span>
+            </div>
+
+            <div class="border border-[#00ff66]/60 p-4 rounded bg-black/60 space-y-3 font-mono text-sm">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 border-b border-[#00ff66]/20 pb-2">
+                    <span class="text-[#00ff66]/60 uppercase">Nama Penuh:</span>
+                    <span id="prev-nama" class="md:col-span-2 font-bold text-white"></span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 border-b border-[#00ff66]/20 pb-2">
+                    <span class="text-[#00ff66]/60 uppercase">No. Telefon:</span>
+                    <span id="prev-telefon" class="md:col-span-2 font-bold text-white"></span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 border-b border-[#00ff66]/20 pb-2">
+                    <span class="text-[#00ff66]/60 uppercase">Alamat E-Mel:</span>
+                    <span id="prev-email" class="md:col-span-2 font-bold text-yellow-400 underline"></span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 border-b border-[#00ff66]/20 pb-2">
+                    <span class="text-[#00ff66]/60 uppercase">Jenis Aduan:</span>
+                    <span id="prev-jenis" class="md:col-span-2 font-bold text-yellow-400"></span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1">
+                    <span class="text-[#00ff66]/60 uppercase">Deskripsi:</span>
+                    <p id="prev-deskripsi" class="md:col-span-2 text-white whitespace-pre-wrap bg-black/40 p-2 border border-[#00ff66]/30 rounded text-xs"></p>
+                </div>
+            </div>
+
+            <!-- Warning Notice -->
+            <div class="text-xs text-yellow-400 bg-yellow-950/30 border border-yellow-600/50 p-2.5 rounded flex items-center space-x-2">
+                <i class="fa-solid fa-envelope-circle-check text-lg flex-shrink-0 text-yellow-400"></i>
+                <span>Nota: Salinan aduan rasmi berbentuk <b>PDF</b> akan dihantar secara automatik ke alamat e-mel di atas sebaik sahaja anda menekan butang <b>HANTAR RASMI</b>.</span>
+            </div>
+
+            <!-- Preview Actions -->
+            <div class="flex justify-between pt-2">
+                <button type="button" onclick="backToForm()" class="bg-black text-[#00ff66] border border-[#00ff66] px-5 py-2 rounded hover:bg-[#00ff66]/20 transition-all flex items-center space-x-2 cursor-pointer">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>KEMBALI EDIT</span>
+                </button>
+                <button type="button" id="btn-submit-final" onclick="submitAduan()" class="bg-[#00ff66] text-black font-bold px-6 py-2 rounded hover:bg-black hover:text-[#00ff66] border border-[#00ff66] transition-all flex items-center space-x-2 cursor-pointer shadow-lg">
+                    <span>HANTAR RASMI</span>
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- STEP 3: SUCCESS SCREEN -->
+        <section id="section-success" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-4 py-8">
+            <div class="w-16 h-16 rounded-full border-2 border-[#00ff66] flex items-center justify-center text-3xl crt-glow bg-[#00ff66]/10 animate-bounce">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <div>
+                <h2 class="terminal-font text-3xl tracking-widest crt-glow text-[#00ff66] m-0">ADUAN BERJAYA DIHANTAR!</h2>
+                <p class="text-xs text-[#00ff66]/70 mt-1">Data anda telah direkodkan dengan selamat dalam pangkalan data pusat.</p>
+            </div>
+
+            <!-- NOTIFIKASI EMAIL PDF -->
+            <div class="border border-yellow-500/60 bg-yellow-950/30 p-3.5 rounded max-w-md w-full text-xs text-yellow-300 flex items-center gap-3 text-left">
+                <i class="fa-solid fa-file-pdf text-2xl flex-shrink-0 text-red-400"></i>
+                <div>
+                    <span class="font-bold uppercase text-yellow-400">SALINAN PDF TELAH DIHANTAR:</span>
+                    <p class="m-0 text-[11px] text-yellow-200/90 mt-0.5">Satu dokumen pengesahan aduan <b>PDF</b> telah dihantar ke e-mel anda: <b id="success-user-email" class="text-white underline"></b></p>
+                </div>
+            </div>
+
+            <div class="border border-[#00ff66]/50 bg-black/60 p-4 rounded max-w-md w-full space-y-2 text-left text-sm font-mono">
+                <div class="flex justify-between border-b border-[#00ff66]/20 pb-1">
+                    <span class="text-[#00ff66]/60">NO. TIKET RUJUKAN:</span>
+                    <span id="ticket-id" class="font-bold text-yellow-400"></span>
+                </div>
+                <div class="flex justify-between border-b border-[#00ff66]/20 pb-1">
+                    <span class="text-[#00ff66]/60">TARIKH / MASA:</span>
+                    <span id="ticket-time" class="text-white"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[#00ff66]/60">STATUS SEMASA:</span>
+                    <span class="text-[#00ff66] font-bold">[ DALAM PROSES ]</span>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button type="button" onclick="resetSystem()" class="bg-[#00ff66] text-black font-bold px-6 py-2 rounded hover:bg-black hover:text-[#00ff66] border border-[#00ff66] transition-all cursor-pointer">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> BUAT ADUAN BARU
+                </button>
+            </div>
+        </section>
+
+        <!-- STEP 4: ADMIN DASHBOARD -->
+        <section id="section-admin" class="hidden space-y-4">
+            <div class="border-b border-[#00ff66]/40 pb-2 flex flex-col md:flex-row justify-between md:items-center gap-2">
+                <div>
+                    <span class="bg-red-500 text-black font-bold px-2 py-0.5 text-xs rounded-none">PANEL KAWALAN ADMIN</span>
+                    <span class="text-sm ml-2 crt-glow">> DASHBOARD REKOD ADUAN PUSAT</span>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" onclick="fetchAdminData()" class="bg-yellow-500/20 text-yellow-400 border border-yellow-500 px-3 py-1 text-xs rounded hover:bg-yellow-500 hover:text-black transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-rotate"></i> SEGARKAN DATA
+                    </button>
+                    <button type="button" onclick="closeAdminDashboard()" class="bg-red-950/60 text-red-400 border border-red-500 px-3 py-1 text-xs rounded hover:bg-red-500 hover:text-black transition-all">
+                        <i class="fa-solid fa-right-from-bracket"></i> LOG KELUAR
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Analytics Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="border border-[#00ff66]/40 bg-black/60 p-3 rounded">
+                    <div class="text-[10px] text-[#00ff66]/70 uppercase">JUMLAH ADUAN</div>
+                    <div id="stat-total" class="text-2xl font-bold crt-glow text-white">0</div>
+                </div>
+                <div class="border border-yellow-500/40 bg-black/60 p-3 rounded">
+                    <div class="text-[10px] text-yellow-400/80 uppercase">STATUS BARU</div>
+                    <div id="stat-baru" class="text-2xl font-bold text-yellow-400">0</div>
+                </div>
+                <div class="border border-blue-500/40 bg-black/60 p-3 rounded">
+                    <div class="text-[10px] text-blue-400/80 uppercase">DALAM PROSES</div>
+                    <div id="stat-proses" class="text-2xl font-bold text-blue-400">0</div>
+                </div>
+                <div class="border border-[#00ff66]/40 bg-black/60 p-3 rounded">
+                    <div class="text-[10px] text-[#00ff66]/80 uppercase">SELESAI</div>
+                    <div id="stat-selesai" class="text-2xl font-bold text-[#00ff66]">0</div>
+                </div>
+            </div>
+
+            <!-- Search & Filter Controls -->
+            <div class="flex flex-col md:flex-row gap-2 justify-between items-center text-xs">
+                <div class="w-full md:w-1/2 flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-[#00ff66]"></i>
+                    <input type="text" id="admin-search" oninput="filterAdminTable()" placeholder="Cari No Tiket, Nama, atau Deskripsi..." class="w-full p-1.5 text-xs rounded">
+                </div>
+                <div class="w-full md:w-auto flex items-center gap-2">
+                    <span class="text-xs text-[#00ff66]/70">TAPIS:</span>
+                    <select id="admin-filter" onchange="filterAdminTable()" class="p-1.5 text-xs rounded">
+                        <option value="ALL">SEMUA STATUS</option>
+                        <option value="BARU">BARU</option>
+                        <option value="DALAM PROSES">DALAM PROSES</option>
+                        <option value="SELESAI">SELESAI</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="border border-[#00ff66]/40 rounded overflow-x-auto max-h-[350px]">
+                <table class="w-full text-left text-xs font-mono">
+                    <thead class="bg-[#00ff66]/10 text-[#00ff66] sticky top-0 border-b border-[#00ff66]/40 bg-black">
+                        <tr>
+                            <th class="p-2 border-r border-[#00ff66]/20">TIKET / TARIKH</th>
+                            <th class="p-2 border-r border-[#00ff66]/20">PEMOHON</th>
+                            <th class="p-2 border-r border-[#00ff66]/20">KATEGORI & DESKRIPSI</th>
+                            <th class="p-2 border-r border-[#00ff66]/20">STATUS</th>
+                            <th class="p-2 text-center">TINDAKAN</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body" class="divide-y divide-[#00ff66]/20">
+                        <tr>
+                            <td colspan="5" class="p-4 text-center text-[#00ff66]/60">Memuatkan data dari pangkalan data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ADMIN PASSWORD AUTH MODAL -->
+    <div id="modal-admin-auth" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="border border-red-500 box-glow bg-black p-6 rounded max-w-sm w-full space-y-4 m-4">
+            <div class="flex justify-between items-center border-b border-red-500/40 pb-2">
+                <span class="text-red-500 font-bold text-sm crt-glow flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>PENGESAHAN KESELAMATAN ADMIN</span>
+                </span>
+                <button type="button" onclick="closeAdminAuthModal()" class="text-red-500 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-red-400/80 m-0">Sila masukkan kata laluan pentadbir untuk mengakses Dashboard Aduan Pusat.</p>
+            
+            <form onsubmit="verifyAdminPassword(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs uppercase mb-1 font-bold text-[#00ff66]">Kata Laluan Pentadbir:</label>
+                    <input type="password" id="admin-pass-input" required placeholder="Masukkan kata laluan..." class="w-full p-2 text-sm rounded border-red-500/50">
+                </div>
+                <div id="auth-error-msg" class="text-xs text-red-500 hidden flex items-center gap-1">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Kata laluan tidak sah!
+                </div>
+                <div class="text-[10px] text-gray-500 italic">* Kata Laluan Pentadbir Rasmi</div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeAdminAuthModal()" class="px-3 py-1.5 border border-gray-600 text-gray-400 text-xs rounded hover:bg-gray-800">BATAL</button>
+                    <button type="submit" class="px-4 py-1.5 bg-red-600 text-white font-bold text-xs rounded hover:bg-red-500">MASUK</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="w-full max-w-4xl mx-auto text-center text-xs text-[#00ff66]/50">
+        <span>[SISTEM E-ADUAN AWAM] &copy; 2026 HAKCIPTA TERPELIHARA // TERMINAL UI ENCRYPTED</span>
+        <span class="inline-block ml-2 w-2 h-4 bg-[#00ff66] align-middle blink"></span>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        /* 
+        ================================================================================
+        KOD LENGKAP GOOGLE APPS SCRIPT (Sertakan Sokongan Penjanaan PDF & Penghantaran E-mel):
+        ================================================================================
+        
+        function doPost(e) {
+          try {
+            var ss = SpreadsheetApp.getActiveSpreadsheet();
+            var sheetName = "Aduan";
+            var sheet = ss.getSheetByName(sheetName);
+            
+            if (!sheet) {
+              sheet = ss.insertSheet(sheetName);
+            }
+            
+            if (sheet.getLastRow() === 0) {
+              var headers = ["Tarikh / Masa", "No Tiket", "Nama Penuh", "No Telefon", "E-Mel", "Jenis Aduan", "Deskripsi Aduan", "Status"];
+              sheet.appendRow(headers);
+              sheet.getRange("A1:H1").setFontWeight("bold").setBackground("#00ff66").setFontColor("#000000");
+              sheet.setFrozenRows(1);
+            }
+            
+            var data = JSON.parse(e.postData.contents);
+            
+            // Kemaskini Status dari Admin Dashboard jika action == "updateStatus"
+            if (data.action === "updateStatus") {
+              var rows = sheet.getDataRange().getValues();
+              for (var i = 1; i < rows.length; i++) {
+                if (rows[i][1] === data.ticketId) {
+                  sheet.getRange(i + 1, 8).setValue(data.newStatus);
+                  return ContentService.createTextOutput(JSON.stringify({ status: "SUCCESS", message: "Status berjaya dikemaskini!" }))
+                    .setMimeType(ContentService.MimeType.JSON);
+                }
+              }
+              return ContentService.createTextOutput(JSON.stringify({ status: "ERROR", message: "Tiket tidak dijumpai" }))
+                .setMimeType(ContentService.MimeType.JSON);
+            }
+
+            // Tambah aduan baharu ke Google Sheet
+            sheet.appendRow([
+              data.tarikh || new Date().toLocaleString(),
+              data.ticketId || "",
+              data.nama || "",
+              data.telefon || "",
+              data.email || "",
+              data.jenis || "",
+              data.deskripsi || "",
+              "BARU"
+            ]);
+            
+            // HANTAR SALINAN E-MEL DALAM BENTUK PDF KEPADA PEMOHON
+            if (data.email) {
+              sendPdfEmail(data);
+            }
+
+            return ContentService.createTextOutput(JSON.stringify({ status: "SUCCESS", message: "Aduan berjaya direkodkan dan PDF dihantar!" }))
+              .setMimeType(ContentService.MimeType.JSON);
+              
+          } catch (error) {
+            return ContentService.createTextOutput(JSON.stringify({ status: "ERROR", message: error.toString() }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+
+        function sendPdfEmail(data) {
+          var htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+                .header { text-align: center; border-bottom: 2px solid #00aa44; padding-bottom: 10px; margin-bottom: 20px; }
+                .header h2 { color: #00aa44; margin: 0; }
+                .ticket { background-color: #f4f4f4; padding: 10px; font-weight: bold; font-size: 14px; text-align: center; border: 1px solid #ccc; margin-bottom: 20px; }
+                .table-info { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                .table-info td { padding: 8px; border-bottom: 1px solid #ddd; }
+                .label { font-weight: bold; width: 35%; color: #555; }
+                .box { border: 1px solid #ddd; padding: 10px; background-color: #fafafa; white-space: pre-wrap; }
+                .footer { font-size: 10px; color: #777; text-align: center; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h2>SALINAN RESMI ADUAN AWAM</h2>
+                <p>Sistem E-Aduan Kerajaan Pusat</p>
+              </div>
+              
+              <div class="ticket">
+                NO TIKET RUJUKAN: ${data.ticketId}
+              </div>
+              
+              <table class="table-info">
+                <tr><td class="label">Nama Pemohon:</td><td>${data.nama}</td></tr>
+                <tr><td class="label">No. Telefon:</td><td>${data.telefon}</td></tr>
+                <tr><td class="label">E-Mel Pemohon:</td><td>${data.email}</td></tr>
+                <tr><td class="label">Tarikh Aduan:</td><td>${data.tarikh}</td></tr>
+                <tr><td class="label">Kategori Aduan:</td><td>${data.jenis}</td></tr>
+              </table>
+              
+              <p class="label">Deskripsi Terperinci Aduan:</p>
+              <div class="box">${data.deskripsi}</div>
+              
+              <div class="footer">
+                <p>Dokumen ini dijana secara automatik oleh Sistem E-Aduan. Tidak memerlukan tandatangan fizikal.</p>
+              </div>
+            </body>
+            </html>
+          `;
+          
+          var blob = Utilities.newBlob(htmlContent, 'text/html', 'Aduan_' + data.ticketId + '.html');
+          var pdfBlob = blob.getAs('application/pdf').setName('Aduan_' + data.ticketId + '.pdf');
+          
+          MailApp.sendEmail({
+            to: data.email,
+            subject: "Salinan Aduan Rasmi: " + data.ticketId + " [" + data.jenis + "]",
+            body: "Salam Sejahtera " + data.nama + ",\n\nTerima kasih kerana membuat aduan. Sila lihat lampiran PDF bagi salinan aduan rasmi anda.\n\nNo Tiket: " + data.ticketId,
+            attachments: [pdfBlob]
+          });
+        }
+
+        function doGet(e) {
+          try {
+            var ss = SpreadsheetApp.getActiveSpreadsheet();
+            var sheet = ss.getSheetByName("Aduan");
+            if (!sheet || sheet.getLastRow() <= 1) {
+              return ContentService.createTextOutput(JSON.stringify({ status: "SUCCESS", data: [] }))
+                .setMimeType(ContentService.MimeType.JSON);
+            }
+            
+            var data = sheet.getDataRange().getValues();
+            var result = [];
+            
+            for (var i = 1; i < data.length; i++) {
+              result.push({
+                tarikh: data[i][0],
+                ticketId: data[i][1],
+                nama: data[i][2],
+                telefon: data[i][3],
+                email: data[i][4],
+                jenis: data[i][5],
+                deskripsi: data[i][6],
+                status: data[i][7] || "BARU"
+              });
+            }
+            
+            return ContentService.createTextOutput(JSON.stringify({ status: "SUCCESS", data: result }))
+              .setMimeType(ContentService.MimeType.JSON);
+          } catch (err) {
+            return ContentService.createTextOutput(JSON.stringify({ status: "ERROR", message: err.toString() }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+        ================================================================================
+        */
+
+        const DEFAULT_APPSCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnuKoYThqLjXDDR-e6FC5eJkzZRa9qEnZG0TAntfOKCskUan5YT7g8JP5cLwImOK8/exec";
+        const ADMIN_PASSWORD = "roro34";
+
+        let allAduanData = [];
+
+        // Load Saved Script URL on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUrl = localStorage.getItem('eaduan_appscript_url') || DEFAULT_APPSCRIPT_URL;
+            document.getElementById('appscript-url').value = savedUrl;
+            
+            if (savedUrl) {
+                document.getElementById('script-status').innerText = '[ TERHUBUNG ]';
+                document.getElementById('script-status').className = 'text-xs text-[#00ff66]';
+            } else {
+                document.getElementById('script-status').innerText = '[ BELUM DISAMBUNG ]';
+                document.getElementById('script-status').className = 'text-xs text-red-400';
+            }
+        });
+
+        function saveScriptUrl() {
+            const url = document.getElementById('appscript-url').value.trim();
+            if (url) {
+                localStorage.setItem('eaduan_appscript_url', url);
+                document.getElementById('script-status').innerText = '[ TERHUBUNG ]';
+                document.getElementById('script-status').className = 'text-xs text-[#00ff66]';
+                alert('URL Apps Script berjaya disimpan!');
+            } else {
+                localStorage.removeItem('eaduan_appscript_url');
+                document.getElementById('script-status').innerText = '[ BELUM DISAMBUNG ]';
+                document.getElementById('script-status').className = 'text-xs text-red-400';
+            }
+        }
+
+        // Live Clock Generator
+        function updateClock() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            document.getElementById('live-clock').innerText = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        let formDataStore = {};
+
+        // Handle Preview Trigger
+        function handlePreview(event) {
+            event.preventDefault();
+            
+            formDataStore.nama = document.getElementById('nama').value.trim();
+            formDataStore.telefon = document.getElementById('telefon').value.trim();
+            formDataStore.email = document.getElementById('email').value.trim();
+            
+            const jenisSelect = document.getElementById('jenis_aduan');
+            formDataStore.jenis = jenisSelect.options[jenisSelect.selectedIndex].text;
+            formDataStore.deskripsi = document.getElementById('deskripsi').value.trim();
+
+            document.getElementById('prev-nama').innerText = formDataStore.nama;
+            document.getElementById('prev-telefon').innerText = formDataStore.telefon;
+            document.getElementById('prev-email').innerText = formDataStore.email;
+            document.getElementById('prev-jenis').innerText = formDataStore.jenis;
+            document.getElementById('prev-deskripsi').innerText = formDataStore.deskripsi;
+
+            document.getElementById('section-form').classList.add('hidden');
+            document.getElementById('section-admin').classList.add('hidden');
+            document.getElementById('section-preview').classList.remove('hidden');
+            
+            document.querySelector('main').scrollTop = 0;
+        }
+
+        function backToForm() {
+            document.getElementById('section-preview').classList.add('hidden');
+            document.getElementById('section-form').classList.remove('hidden');
+            document.querySelector('main').scrollTop = 0;
+        }
+
+        // Final Submit
+        async function submitAduan() {
+            const submitBtn = document.getElementById('btn-submit-final');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>MENGHANTAR & MENJANA PDF...</span>`;
+
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            const ticketCode = `ADUAN-2026-${randomNum}`;
+            
+            const now = new Date();
+            const timeString = now.toLocaleString('ms-MY');
+
+            const appScriptUrl = document.getElementById('appscript-url').value.trim();
+            
+            if (appScriptUrl) {
+                try {
+                    const payload = {
+                        ticketId: `#${ticketCode}`,
+                        tarikh: timeString,
+                        nama: formDataStore.nama,
+                        telefon: formDataStore.telefon,
+                        email: formDataStore.email,
+                        jenis: formDataStore.jenis,
+                        deskripsi: formDataStore.deskripsi
+                    };
+
+                    await fetch(appScriptUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (err) {
+                    console.error('Gagal menghantar ke Apps Script:', err);
+                }
+            }
+
+            document.getElementById('ticket-id').innerText = `#${ticketCode}`;
+            document.getElementById('ticket-time').innerText = timeString;
+            document.getElementById('success-user-email').innerText = formDataStore.email;
+
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span>HANTAR RASMI</span><i class="fa-solid fa-paper-plane"></i>`;
+
+            document.getElementById('section-preview').classList.add('hidden');
+            document.getElementById('section-success').classList.remove('hidden');
+            document.querySelector('main').scrollTop = 0;
+        }
+
+        function resetSystem() {
+            document.getElementById('aduan-form').reset();
+            document.getElementById('section-success').classList.add('hidden');
+            document.getElementById('section-admin').classList.add('hidden');
+            document.getElementById('section-form').classList.remove('hidden');
+            document.querySelector('main').scrollTop = 0;
+        }
+
+        /* ADMIN DASHBOARD LOGIC */
+        function openAdminAuthModal() {
+            document.getElementById('modal-admin-auth').classList.remove('hidden');
+            document.getElementById('admin-pass-input').value = '';
+            document.getElementById('auth-error-msg').classList.add('hidden');
+            document.getElementById('admin-pass-input').focus();
+        }
+
+        function closeAdminAuthModal() {
+            document.getElementById('modal-admin-auth').classList.add('hidden');
+        }
+
+        function verifyAdminPassword(event) {
+            event.preventDefault();
+            const pass = document.getElementById('admin-pass-input').value;
+            if (pass === ADMIN_PASSWORD) {
+                closeAdminAuthModal();
+                showAdminDashboard();
+            } else {
+                document.getElementById('auth-error-msg').classList.remove('hidden');
+            }
+        }
+
+        function showAdminDashboard() {
+            document.getElementById('section-form').classList.add('hidden');
+            document.getElementById('section-preview').classList.add('hidden');
+            document.getElementById('section-success').classList.add('hidden');
+            document.getElementById('section-admin').classList.remove('hidden');
+            
+            fetchAdminData();
+        }
+
+        function closeAdminDashboard() {
+            document.getElementById('section-admin').classList.add('hidden');
+            document.getElementById('section-form').classList.remove('hidden');
+        }
+
+        async function fetchAdminData() {
+            const tbody = document.getElementById('admin-table-body');
+            tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-[#00ff66] animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Mengambil rekod dari Google Sheets...</td></tr>`;
+
+            const appScriptUrl = document.getElementById('appscript-url').value.trim();
+            if (!appScriptUrl) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-400">Ralat: URL Apps Script belum ditetapkan!</td></tr>`;
+                return;
+            }
+
+            try {
+                const response = await fetch(appScriptUrl);
+                const resData = await response.json();
+
+                if (resData.status === 'SUCCESS' && Array.isArray(resData.data)) {
+                    allAduanData = resData.data;
+                    renderAdminTable(allAduanData);
+                    updateAdminStats(allAduanData);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-yellow-400">Tiada rekod dijumpai atau Apps Script memerlukan kebenaran.</td></tr>`;
+                }
+            } catch (err) {
+                console.error("Gagal mengambil data:", err);
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-400">Ralat sambungan: ${err.message}</td></tr>`;
+            }
+        }
+
+        function updateAdminStats(data) {
+            document.getElementById('stat-total').innerText = data.length;
+            document.getElementById('stat-baru').innerText = data.filter(d => (d.status || 'BARU') === 'BARU').length;
+            document.getElementById('stat-proses').innerText = data.filter(d => d.status === 'DALAM PROSES').length;
+            document.getElementById('stat-selesai').innerText = data.filter(d => d.status === 'SELESAI').length;
+        }
+
+        function renderAdminTable(data) {
+            const tbody = document.getElementById('admin-table-body');
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Tiada aduan direkodkan.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map((item) => {
+                let statusBadge = '';
+                const st = item.status || 'BARU';
+                if (st === 'BARU') {
+                    statusBadge = `<span class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-2 py-0.5 rounded text-[10px] font-bold">BARU</span>`;
+                } else if (st === 'DALAM PROSES') {
+                    statusBadge = `<span class="bg-blue-500/20 text-blue-400 border border-blue-500/50 px-2 py-0.5 rounded text-[10px] font-bold">PROSES</span>`;
+                } else {
+                    statusBadge = `<span class="bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/50 px-2 py-0.5 rounded text-[10px] font-bold">SELESAI</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-[#00ff66]/5 transition-all">
+                        <td class="p-2 border-r border-[#00ff66]/20">
+                            <div class="font-bold text-yellow-400">${item.ticketId || '-'}</div>
+                            <div class="text-[10px] text-gray-400">${item.tarikh || '-'}</div>
+                        </td>
+                        <td class="p-2 border-r border-[#00ff66]/20">
+                            <div class="font-bold text-white">${item.nama || '-'}</div>
+                            <div class="text-[10px] text-[#00ff66]/70">${item.telefon || ''} | ${item.email || ''}</div>
+                        </td>
+                        <td class="p-2 border-r border-[#00ff66]/20 max-w-xs">
+                            <div class="text-[10px] text-yellow-300 font-bold">${item.jenis || '-'}</div>
+                            <div class="text-[11px] text-gray-300 truncate" title="${item.deskripsi}">${item.deskripsi || '-'}</div>
+                        </td>
+                        <td class="p-2 border-r border-[#00ff66]/20 text-center">
+                            ${statusBadge}
+                        </td>
+                        <td class="p-2 text-center">
+                            <select onchange="updateTicketStatus('${item.ticketId}', this.value)" class="p-1 text-[10px] rounded cursor-pointer bg-black text-[#00ff66] border border-[#00ff66]">
+                                <option value="BARU" ${st === 'BARU' ? 'selected' : ''}>BARU</option>
+                                <option value="DALAM PROSES" ${st === 'DALAM PROSES' ? 'selected' : ''}>PROSES</option>
+                                <option value="SELESAI" ${st === 'SELESAI' ? 'selected' : ''}>SELESAI</option>
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterAdminTable() {
+            const searchValue = document.getElementById('admin-search').value.toLowerCase();
+            const filterValue = document.getElementById('admin-filter').value;
+
+            const filtered = allAduanData.filter(item => {
+                const matchesSearch = (item.ticketId || '').toLowerCase().includes(searchValue) ||
+                                      (item.nama || '').toLowerCase().includes(searchValue) ||
+                                      (item.deskripsi || '').toLowerCase().includes(searchValue);
+                
+                const itemStatus = item.status || 'BARU';
+                const matchesFilter = filterValue === 'ALL' || itemStatus === filterValue;
+
+                return matchesSearch && matchesFilter;
+            });
+
+            renderAdminTable(filtered);
+        }
+
+        async function updateTicketStatus(ticketId, newStatus) {
+            const appScriptUrl = document.getElementById('appscript-url').value.trim();
+            if (!appScriptUrl) return;
+
+            try {
+                await fetch(appScriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'updateStatus',
+                        ticketId: ticketId,
+                        newStatus: newStatus
+                    })
+                });
+
+                const item = allAduanData.find(d => d.ticketId === ticketId);
+                if (item) item.status = newStatus;
+
+                updateAdminStats(allAduanData);
+                filterAdminTable();
+            } catch (err) {
+                console.error("Gagal mengemaskini status:", err);
+            }
+        }
+    </script>
+</body>
+</html>
